@@ -295,8 +295,8 @@ Citations: [nvidia.com, amd.com, aws-pricing, mlperf-benchmarks]
 ### **Backend Infrastructure**
 - **FastAPI:** REST + WebSocket API
 - **LangGraph:** Stateful agent orchestration (not basic LangChain)
-- **Ollama:** Local LLM inference (Llama 3.1 8B, Nemotron 4B)
-- **Chroma:** Vector database with persistent storage
+- **Ollama:** Local LLM inference (Nemotron 4B)
+- **Chroma:** Vector database
 
 ### **Intelligence Layer**
 - **Tavily API:** Real-time competitive intelligence
@@ -311,9 +311,9 @@ Citations: [nvidia.com, amd.com, aws-pricing, mlperf-benchmarks]
 
 ---
 
-## 📁 Project Structure
+## 📁 Nexus-Intelligence Backnend File Structure
 ```
-nexus-intelligence/
+Advanced_RAG/
 ├── src/
 │   ├── agents/
 │   │   ├── doc_retrieval_agent.py    # Hybrid search + LLM evaluation
@@ -329,12 +329,6 @@ nexus-intelligence/
 │   │   └── app.py                    # FastAPI backend + WebSocket
 │   └── orchestration/
 │       └── main.py                   # CLI entry point
-├── frontend.py                       # Streamlit UI
-├── docker-compose.yaml               # One-command deployment
-├── config/
-│   └── agents.yaml                   # Model & retrieval config
-└── benchmarks/
-    └── golden_dataset.json           # Evaluation queries
 ```
 
 ---
@@ -399,76 +393,25 @@ verifying with official specs."
 
 ## 🧪 Evaluation Framework
 
-### Golden Queries Dataset
-
-We test on **adversarial queries** designed to break traditional RAG:
-
-**1. Multi-Hop Reasoning:**
-> *"Find Tesla Dojo D1 chip specs → Extract FP32 TFLOPS → Verify against MLPerf benchmarks → Compare to NVIDIA A100"*
-
-**2. Contradiction Resolution:**
-> *"Source 1 says quantum supremacy achieved in 2019. Source 2 says not practically achieved. What's the consensus?"*
-
-**3. Temporal Analysis:**
-> *"Chart mentions of 'RAG' in Microsoft, Google, Salesforce earnings calls from Q4 2022 to Q2 2024. Identify trend shifts."*
-
-**4. Competitive Positioning:**
-> *"If OpenAI's GPT-5 launches with 10T parameters in 2025, which cloud provider (AWS/Azure/GCP) is best positioned to capture training revenue?"*
-
-### Run Evaluation
-```bash
-python benchmarks/evaluate.py --dataset golden_dataset.json
-```
+### LLM-as-Judge
 
 **Metrics tracked:**
 - Faithfulness (hallucination rate)
 - Answer relevancy (stays on topic)
-- Ground truth match (factual accuracy)
+- Accuracy (factual accuracy)
 - Citation quality (source traceability)
 
 ---
 
-## 🛣️ Roadmap
 
-### ✅ **Phase 1: Foundation (Current - Q1 2025)**
-- [x] Five-agent architecture
-- [x] LangGraph orchestration  
-- [x] Enhanced hybrid retrieval
-- [x] Real-time WebSocket streaming
-- [x] Docker deployment
-- [x] Streamlit UI
+## Further Improvements Plan
 
-### 🔄 **Phase 2: Enterprise Features (Q2 2025)**
-- [ ] Multi-tenant architecture (team workspaces)
-- [ ] Fine-tuned reranking models (domain-specific)
-- [ ] Excel/CSV export of insights
-- [ ] Scheduled reports (daily competitor monitoring)
-- [ ] SSO authentication (Okta, Azure AD)
+Those Improvements will definately lead Nexus-Intelligence to be more production-efficient
 
-### 🌟 **Phase 3: Advanced Intelligence (Q3 2025)**
-- [ ] Memory system (remember past analyses)
-- [ ] Chart generation (matplotlib/plotly integration)
-- [ ] Sentiment analysis on earnings call transcripts
-- [ ] Predictive analytics (forecast market trends)
-- [ ] Slack/Teams integration
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Priority areas:
-
-**High Impact:**
+**Improvement Plan**
+- 🔥 Advanced Document Parser usage and implementation of OCR to perform better even at complex pdfs
+- 🔥 Cloud-Integration for to avoid local data storage
 - 🔥 Fine-tune cross-encoder reranker on business documents
-- 🔥 Build proprietary evaluation dataset (100+ BI queries)
-- 🔥 Implement PDF table extraction (pandas-compatible)
-
-**Medium Impact:**
-- Voice interface (Whisper transcription)
-- Multi-language support
-- Export to PowerPoint slides
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
@@ -512,6 +455,7 @@ A: **Minimum:** 16GB RAM, no GPU (CPU inference via Ollama)
 
 ### Research Papers Implemented
 - [RAG: Retrieval-Augmented Generation (Lewis et al., 2020)](https://arxiv.org/abs/2005.11401)
+- [Corrective Retrieval Augmented Generation](https://arxiv.org/pdf/2401.15884)
 - [LangGraph: Multi-Agent Orchestration (Harrison, 2024)](https://github.com/langchain-ai/langgraph)
 - [Hybrid Search Best Practices (Robertson & Zaragoza, BM25)](https://www.microsoft.com/en-us/research/publication/the-probabilistic-relevance-framework-bm25-and-beyond/)
 
