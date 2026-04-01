@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: Nexus_RAG-backend
+    command: uvicorn Advanced_RAG.src.api.app:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434 
+    depends_on:
+      - ollama
+
+  frontend:
+    build: .
+    container_name: Nexus_RAG-frontend
+    command: streamlit run frontend.py --server.address 0.0.0.0 --server.port 8501
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://backend:8000
+      - WS_URL=ws://backend:8000/api/v1/chat/ws
+    depends_on:
+      - backend
+  ollama:
+    image: ollama/ollama:latest
+    container_name: Nexus_RAG-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  ollama-puller:
+    image: ollama/ollama:latest
+    container_name: Nexus_RAG-puller
+    environment:
+      - OLLAMA_HOST=ollama
+    command: pull nomic-embed-text:latest
+    depends_on:
+      - ollama
+
+volumes:
+  ollama_data:
