@@ -1,0 +1,7 @@
+# Virtual Environments
+rag_env/
+env/
+.github/
+.gitignore
+README.md
+
