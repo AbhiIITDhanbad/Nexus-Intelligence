@@ -47,7 +47,7 @@ A **self-orchestrating AI system** that doesn't just search documents—it *inve
 | Metric | Score | What This Means |
 |--------|-------|-----------------|
 | **Faithfulness** | **0.95 / 1.00** | System relies strictly on retrieved/researched facts—no hallucinations |
-| **Answer Relevancy** | **0.98 / 1.00** | High precision in directly answering complex prompts |
+| **Answer Relevancy** | **0.95 / 1.00** | High precision in directly answering complex prompts |
 | **Accuracy** | **0.90 / 1.00** | Successfully extracts core facts from multi-document contexts |
 
 *Evaluated on 20+ adversarial competitive intelligence queries*
