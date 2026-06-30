@@ -5,7 +5,7 @@ from typing import List
 from pathlib import Path
 import sys
 from pathlib import Path 
-
+import uuid
 import os
 
 API_URL = os.getenv("API_URL", "http://127.0.0.1:8000")
@@ -105,8 +105,9 @@ async def chat_websocket(websocket: WebSocket):
             })
 
             # 2. Stream the graph execution
-            async for payload in orchestrator.stream_query(user_query, user_id="web_user"):
+            async for payload in orchestrator.stream_query(user_query, thread_id=uuid.uuid4(),user_id=None):
                 await websocket.send_json(payload)
+                
 
     except WebSocketDisconnect:
         print("🔌 Client disconnected from WebSocket.")

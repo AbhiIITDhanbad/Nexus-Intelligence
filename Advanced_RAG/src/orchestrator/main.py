@@ -16,6 +16,7 @@ from typing import Optional, Dict, Any, List
 import yaml
 import time
 import json
+from datetime import datetime
 from langchain_community.document_loaders import TextLoader , PyPDFLoader
 # Add src to path
 src_path = Path(__file__).parent.parent
@@ -35,6 +36,7 @@ class Orchestrator:
         self.docs = None
         # self.docs = None
         self.workflow = None
+        self.pending_confirmations = {}
         # self._initialize_workflow()
     def load_context(self, docs):
         """
@@ -164,7 +166,7 @@ class Orchestrator:
         }
         
         return response
-    async def stream_query(self, query: str, user_id: Optional[str] = None):
+    async def stream_query(self, query: Optional[str] = "", thread_id: Optional[str] = "",  user_id=None):
             """
             Asynchronous generator that yields real-time state updates.
             """
@@ -175,8 +177,8 @@ class Orchestrator:
                 return
 
             from graph.state import create_initial_state
-            initial_state = create_initial_state(query, user_id)
-            config = {"configurable": {"thread_id": f"stream_{time.time()}"}}
+            initial_state = create_initial_state(query, thread_id)
+            config = {"configurable": {"thread_id": thread_id}}
 
             try:
                 async for output in self.workflow.graph.astream(initial_state, config):
@@ -193,7 +195,22 @@ class Orchestrator:
                         if node_name == "doc_retrieval_agent":
                             payload["verdict"] = state_update.get("verdict")
                             payload["docs_found"] = len(state_update.get("good_docs", []))
-                        
+                        # if state_update.get("verdict") == "AMBIGUOUS":
+                        #     self.pending_confirmations[thread_id] = state_update.copy()
+                        #     yield {
+                        #         "type": "confirmation",
+                        #         "thread_id": thread_id,
+                        #         "message":
+                        #             "I found the retrieved information may be insufficient to solve your query.\n"
+                        #             "Should I also research on my side? (Yes/No)"
+                        #     }
+                        #     return
+                        # if node_name == "confirmation_agent":
+                        #     yield {
+                        #         "type":"confirmation",
+                        #         "message":state_update.get("confirmation_message")
+                        #     }
+                        #     return
                         # 3. Verification Intercept
                         if node_name == "fact_verification_agent":
                             contradictions = state_update.get("contradiction_report", [])

@@ -2,5 +2,6 @@ __pycache__/
 *.pyc
 .env
 .DS_Store
-rag_env/
+rag_env2/
+my_env/
 .pytest_cache/

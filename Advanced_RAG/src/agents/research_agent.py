@@ -14,7 +14,7 @@ from langchain_ollama import OllamaLLM, ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser , PydanticOutputParser
 from langchain_core.runnables import RunnableLambda
-
+from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from tavily import TavilyClient
 
 try:
@@ -119,17 +119,21 @@ class ResearchAgent(BaseAgent):
         """Initialize the LLM for research tasks."""
         llm_config = self.config.get("llm", {})
         model = llm_config.get("research_model", "gpt-oss:120b-cloud")
-        model = "gpt-oss:120b-cloud"
+        # model = "gpt-oss:120b-cloud"
         temp_config = llm_config.get("temperature", 0.0)
         if isinstance(temp_config, dict):
             temperature = temp_config.get("default", 0.0)
         else:
             temperature = float(temp_config)
         
-        self.llm = ChatOllama(
-                model=model,
-                temperature=0.0,
-            )
+        # self.llm = ChatOllama(
+        #         model=model,
+        #         temperature=0.0,
+        #     )
+        self.llm = ChatHuggingFace(llm=HuggingFaceEndpoint(
+            repo_id=model,
+            task="text-generation"
+        ))
         print(f"✅ ResearchAgent LLM initialized: {model}")
     
     def _initialize_prompts(self):
@@ -174,40 +178,40 @@ Rate credibility from 0.0 (not credible) to 1.0 (highly credible).
 Respond with a JSON containing credibility score and reasoning."""),
             ("human", "Source URL: {url}\nContent Excerpt: {content}\nDate: {date}")
         ])
-    def expand_query(self, query: str):
-            """
-            Expand query using LLM to generate synonyms and related terms.
+#     def expand_query(self, query: str):
+#             """
+#             Expand query using LLM to generate synonyms and related terms.
             
-            Returns:
-                Tuple of (expanded_query, expansion_terms)
-            """
+#             Returns:
+#                 Tuple of (expanded_query, expansion_terms)
+#             """
             
-            try:
-                from langchain_core.prompts import ChatPromptTemplate
-                print("prompt starting")
-                prompt = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            "Rewrite the user question into a web search query composed of keywords.\n"
-            "Rules:\n"
-            "- Keep it short (6–14 words).\n"
-            "- If the question implies recency (e.g., recent/latest/last week/last month), add a constraint like (last 30 days).\n"
-            "- Do NOT answer the question.\n"
-            "- Return JSON with a single key: query",
-        ),
-        ("human", "Question: {query}"),
-    ]
-)
-                print("Expanding...")
-                chain = prompt | self.llm.with_structured_output(QueryEnrich)
-                print("chaining done")
-                result = chain.invoke({"query": query})
-                print("Expanding done")
-                return result.query
-            except Exception as e:
-                print(f"⚠️  Query expansion failed: {e}")
-                return query
+#             try:
+#                 from langchain_core.prompts import ChatPromptTemplate
+#                 print("prompt starting")
+#                 prompt = ChatPromptTemplate.from_messages(
+#     [
+#         (
+#             "system",
+#             "Rewrite the user question into a web search query composed of keywords.\n"
+#             "Rules:\n"
+#             "- Keep it short (6–14 words).\n"
+#             "- If the question implies recency (e.g., recent/latest/last week/last month), add a constraint like (last 30 days).\n"
+#             "- Do NOT answer the question.\n"
+#             "- Return JSON with a single key: query",
+#         ),
+#         ("human", "Question: {query}"),
+#     ]
+# )
+#                 print("Expanding...")
+#                 chain = prompt | self.llm.with_structured_output(QueryEnrich)
+#                 print("chaining done")
+#                 result = chain.invoke({"query": query})
+#                 print("Expanding done")
+#                 return result.query
+#             except Exception as e:
+#                 print(f"⚠️  Query expansion failed: {e}")
+#                 return query
     async def _execute_impl(self, state: AgentState) -> AgentState:
         """
         Execute research using Tavily API.
@@ -225,33 +229,25 @@ Respond with a JSON containing credibility score and reasoning."""),
                 raise ValueError("Tavily API client not available")
             
             query = state.get("query", "No query found!")
-            query = self.expand_query(query)
+            # query = self.expand_query(query)
             
             if not query:
                 print("⚠️  No query found for research")
                 return state
             
             research_tasks = [query]
-            
             if not research_tasks:
                 print("⚠️  No research tasks identified")
                 return state
-            
             print(f"   Found {len(research_tasks)} research tasks")
-            
-
             all_findings = []
             all_sources = []
-            
             for task in research_tasks:
                 print(f"   Researching: {task[:60]}...")
-                
                 search_results = await self._perform_web_search(task)
-                
                 if search_results:
                     findings = await self._analyze_search_results(task, search_results)
                     all_findings.extend(findings)
-
                     for finding in findings:
                         source = {
                             "type": finding.get("source_type", "unknown"),
@@ -309,7 +305,6 @@ Respond with a JSON containing credibility score and reasoning."""),
             error_msg = f"Research execution failed: {str(e)}"
             print(f"❌ {error_msg}")
             state = add_error_to_state(state, self.name, error_msg)
-            
             # Provide minimal fallback information
             state["research_results"] = {
                 "findings": [],
@@ -351,7 +346,6 @@ Respond with a JSON containing credibility score and reasoning."""),
             print("Extracting search results")
             # Extract results
             results = response.get("results", [])
-            
             # Process results
             processed_results = []
             for result in results:
@@ -385,7 +379,7 @@ Respond with a JSON containing credibility score and reasoning."""),
         Args:
             query: Original search query
             search_results: List of search results from Tavily
-            
+
         Returns:
             List of structured findings
         """
@@ -406,10 +400,8 @@ Respond with a JSON containing credibility score and reasoning."""),
                 "search_results": formatted_results
             })
             print("Cleaning the response")
-            
             # Extract findings
             findings = raw_response.get("findings", [])
-            
             # Enhance findings with credibility assessment
             enhanced_findings = []
             for finding in findings:
@@ -515,7 +507,6 @@ Respond with a JSON containing credibility score and reasoning."""),
         Returns:
             Research results
         """
-        query = self.expand_query(query)
         print(f"🔍 Performing real research for: {query}")
         
         try:
@@ -548,17 +539,14 @@ Respond with a JSON containing credibility score and reasoning."""),
 async def test_research_agent():
     """Test the ResearchAgent with Tavily API."""
     print("🧪 Testing ResearchAgent with Tavily API...")
-    
     # Check for API key
     api_key = os.getenv("TAVILY_API_KEY")
     if not api_key:
         print("❌ TAVILY_API_KEY not found in environment variables")
         print("   Please set TAVILY_API_KEY in your .env file")
         return
-    
     # Initialize agent
     agent = ResearchAgent()
-    
     # Test with a real search query
     test_query = "Write about ServishNow NVDIA partnership in 2023 in brief"
     

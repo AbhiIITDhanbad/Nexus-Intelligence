@@ -7,19 +7,19 @@ import os
 import asyncio
 from typing import Dict, Any, Literal, Optional
 from datetime import datetime
-
+import uuid
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.memory import InMemorySaver
-
+from langgraph.checkpoint.memory import MemorySaver
+from langgraph.types import interrupt, Command
 from graph.state import AgentState , create_initial_state
 # from agents.query_analyzer import QueryAnalyzerAgent
 from agents.research_agent import ResearchAgent
 from agents.doc_retrieval_agent import DocRetrievalAgent
 from agents.synthesis_agent import SynthesisAgent
 from agents.fact_verification_agent import FactVerificationAgent
- 
+
 
 class MultiAgentGraph:
     """
@@ -31,7 +31,7 @@ class MultiAgentGraph:
         self.config = config or {}
         self.docs = docs
         self.graph = None
-        self.checkpointer = None
+        self.checkpointer = MemorySaver()
         self.agents = {}
         
         self._initialize_agents()
@@ -47,7 +47,6 @@ class MultiAgentGraph:
         self.agents["research_agent"] = ResearchAgent(self.config)
         print("Node agent_retrieval created")
         # Initialize DocRetrievalAgent
-
         self.agents["fact_verification_agent"] = FactVerificationAgent(self.config)
         print("Node Fact_verification_agent created")
         # Initialize SynthesisAgent
@@ -64,10 +63,11 @@ class MultiAgentGraph:
             
             # Add nodes (agents)
             workflow.add_node("doc_retrieval_agent", self._run_doc_retrieval_agent)
+            # workflow.add_node("hitl", self._run_hitl_agent)
+            # workflow.add_node("confirmation_agent",self._run_confirmation_agent)
             workflow.add_node("research_agent", self._run_research_agent)
             workflow.add_node("fact_verification_agent", self._run_fact_verification_agent)
             workflow.add_node("synthesis_agent", self._run_synthesis_agent)
-            
             workflow.set_entry_point("doc_retrieval_agent")
             workflow.add_conditional_edges(
                 "doc_retrieval_agent",
@@ -75,14 +75,23 @@ class MultiAgentGraph:
                 {
                     "research_agent": "research_agent",
                     "synthesis_agent":"synthesis_agent"
+                    # "confirmation_agent":"confirmation_agent"
                 }
             )
+            # workflow.add_conditional_edges(
+            #     "confirmation_agent",
+            #     self._route_after_hitl,
+            #     {
+            #         "research_agent": "research_agent",
+            #         "synthesis_agent": "synthesis_agent"
+            #     }
+            # )
             workflow.add_edge("research_agent", "fact_verification_agent")
             workflow.add_edge("fact_verification_agent", "synthesis_agent")
             workflow.add_edge("synthesis_agent", END)
             
             # Add memory for conversation
-            memory = InMemorySaver()
+            memory = MemorySaver()
             
             self.graph = workflow.compile(checkpointer=memory)
             
@@ -125,12 +134,61 @@ class MultiAgentGraph:
     def _route_after_analysis(self, state: AgentState) -> Literal["synthesis_agent","research_agent"]:
         """Determine routing after query analysis."""
         # routing = state.get("routing_decision", "parallel")
-        if state["verdict"] == "CORRECT":
-            return "synthesis_agent"
-        else:
+        # else:
+        #     return "research_agent"
+        if state["verdict"]=="INCORRECT":
             return "research_agent"
+        else:
+            return "synthesis_agent"
+
+    # def _run_confirmation_agent(self, state: AgentState):
+
+    #     state["awaiting_confirmation"] = True
+
+    #     state["pending_query"] = state["query"]
+
+    #     state["confirmation_message"] = (
+    #         "I found the relevant information may be insufficient to solve your query.\n"
+    #         "Should I also research on my side? (Yes/No)"
+    #     )
+
+    #     return state
+
+    # def _run_hitl_agent(self,state: AgentState):
+    #     """
+    #     Human-in-the-loop node.
+    #     Pauses graph execution and waits for user decision.
+    #     """
+    #     user_choice = interrupt(
+    #         {
+    #             "type": "AMBIGUOUS_RETRIEVAL",
+    #             "title": "Ambiguous Retrieval",
+    #             "message":
+    #                 "I found the relevant information may be insufficient to solve your query"
+    #                 "Should I also research on my side ? Yes/No",
+
+    #             "choices": [
+    #                 {
+    #                     "label": "Use Uploaded Documents Only",
+    #                     "value": "documents_only"
+    #                 },
+    #                 {
+    #                     "label": "Search Web Too",
+    #                     "value": "web"
+    #                 }
+    #             ]
+    #         }
+    #     )
+    #     state["user_choice"] = user_choice
+    #     return state
     
-    async def process_query(self, query: str, user_id: Optional[str] = None) -> AgentState:
+    # def _route_after_hitl(self,state: AgentState) -> Literal["research_agent","synthesis_agent"]:
+    #     choice = state["user_choice"]
+    #     if choice == "web":
+    #         return "research_agent"
+    #     return "synthesis_agent"
+    
+    async def process_query(self, query: str, user_id: Optional[str] = uuid.uuid4()) -> AgentState:
         """
         Process a query through the LangGraph workflow.
         """

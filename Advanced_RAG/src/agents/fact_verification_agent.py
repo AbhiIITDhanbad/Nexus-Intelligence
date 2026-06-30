@@ -37,13 +37,10 @@ class FactVerificationAgent(BaseAgent):
         )
         
         self.config = config or {}
-        
         # Contradiction detection thresholds
         self.contradiction_threshold = self.config.get("contradiction_threshold", 0.7)
         self.min_sources_for_verification = self.config.get("min_sources", 2)
-        
         print(f"✅ FactVerificationAgent initialized")
-    
     async def _execute_impl(self, state: AgentState) -> AgentState:
         """
         Execute fact verification on research findings and documents.
@@ -192,9 +189,9 @@ class FactVerificationAgent(BaseAgent):
             sentences = content.split('. ')
             
             # Take first 3 sentences as key facts (simplified)
-            key_sentences = sentences[:3]
+            # key_sentences = sentences[:3]
             
-            for j, sentence in enumerate(key_sentences):
+            for j, sentence in enumerate(sentences):
                 if len(sentence.strip()) > 20:  # Minimum length
                     fact = {
                         "id": f"doc_{i}_{j}",

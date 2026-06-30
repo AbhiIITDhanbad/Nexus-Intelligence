@@ -11,13 +11,13 @@ system:
 
 # LLM Configuration
 llm:
-  default_model: "gpt-oss:120b-cloud"
-  query_analyzer_model: "gpt-oss:120b-cloud"
-  research_model: "gpt-oss:120b-cloud"
-  synthesis_model: "gpt-oss:120b-cloud"
-  code_execution_model: "gpt-oss:120b-cloud"
-  fact_check_model: "gpt-oss:120b-cloud"
-  
+  default_model: "openai/gpt-oss-120b"
+  query_analyzer_model: "openai/gpt-oss-120b"
+  research_model: "openai/gpt-oss-120b"
+  synthesis_model: "openai/gpt-oss-120b"
+  code_execution_model: "openai/gpt-oss-120b"
+  fact_check_model: "openai/gpt-oss-120b"
+   
   temperature:
     default: 0.0
     creative: 0.3

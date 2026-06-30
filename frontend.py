@@ -3,7 +3,6 @@ import requests
 import json
 import websocket  
 
-
 API_URL = "http://localhost:8000"
 WS_URL = "ws://localhost:8000/api/v1/chat/ws"
 

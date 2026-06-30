@@ -10,6 +10,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 from langchain_core.documents import Document
 
+# class GoodDocs(TypedDict)
 
 class AgentState(TypedDict):
     """
@@ -26,7 +27,11 @@ class AgentState(TypedDict):
 
     verdict: str ###
     reason: str ###
-    
+    user_choice: str
+
+    awaiting_confirmation: bool
+    pending_query: Optional[str]
+    confirmation_message: Optional[str] 
     # Agent outputs
     research_results: Optional[Dict[str, Any]]  # Research agent findings
     retrieved_documents: Optional[List[Document]]  # DocRetrieval output
@@ -86,6 +91,10 @@ def create_initial_state(query: str, user_id: Optional[str] = None) -> AgentStat
         "contradiction_report": None,
         "verification_confidence": None,
         "source_credibility_adjustments": None,
+        "user_choice":"",
+        "awaiting_confirmation" : False,
+        "pending_query": None,
+        "confirmation_message": None
     }
 
 

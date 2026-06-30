@@ -13,7 +13,8 @@ from pydantic import BaseModel, Field
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from langchain_ollama import OllamaLLM , ChatOllama
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_huggingface import ChatHuggingFace,HuggingFaceEndpoint
+from langchain_core.prompts import ChatPromptTemplate,PromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser , JsonOutputParser
 from langchain_core.runnables import RunnableLambda
 from agents.base_agent import BaseAgent
@@ -50,56 +51,49 @@ class SynthesisAgent(BaseAgent):
         temp = llm_config.get("temperature", 0.1)
         if isinstance(temp, dict): temp = temp.get("default", 0.1)
         
-        self.llm = ChatOllama(model=model, temperature=float(temp))
+        self.llm =ChatHuggingFace(llm= HuggingFaceEndpoint(
+            repo_id="openai/gpt-oss-120b",
+            task="text-generation"
+        ))
+
         print(f"✅ SynthesisAgent LLM initialized: {model}")
     
     def _initialize_prompts(self):
-        self.synthesis_prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a Lead Technical Analyst.
-Synthesize a comprehensive answer based on the provided VERIFIED FACTS and SOURCES.
+        self.synthesis_prompt = PromptTemplate(
 
+            template="""You are a Lead Technical Analyst.
+Synthesize a comprehensive answer based on the provided VERIFIED FACTS and SOURCES(if given).
+             
 ### INPUT CONTEXT:
 - **User Query**: {query}
 
 
-### SOURCE DATA:
-1. **VERIFIED FACTS** (True Data):
+### SOURCE DATA:             
+1. **VERIFIED FACTS**(if_found):
 {verified_facts_summary}
 
-2. **Contradictions**:
+2. **Contradictions**(if found):
 {contradiction_report}
 
-3. **Raw Research**:
+3. **Raw Research** :
 {raw_data_summary}
 
 ### OUTPUT FORMAT:
 Return a single JSON object. Do not include markdown formatting or explanations.
 Follow this exact structure:
-{{
-    "answer": "Detailed answer text here...",
-    "confidence": Overall confidence score between 0 to 1,
-    "citations": [
-        {{"source_id": "doc_1", "content_referenced": "...", "credibility": 0.9}}
-    ],
-    "contradictions": ["List any conflicts found"],
-    "assumptions": ["List any assumptions made"]
-}}
-
-### REQUIREMENTS:
-1. **Detail**: Provide a detailed, multi-paragraph analysis.
-2. **Data**: Include specific numbers/metrics from the Verified Facts.
-3. **Accuracy**: If facts conflict, acknowledge the discrepancy.
 ### CRITICAL RULES:
-1. If the retrieved documents do not contain the specific metric, you MUST state "Information not found in context."
-2. DO NOT estimate or hallucinate future projections unless explicitly stated in the source text.             
-             
-             """),
+1. If the retrieved documents do not contain the specific information, you MUST state "Information not found in context."
+2. DO NOT estimate or hallucinate future projections unless explicitly stated in the source text.  
+Synthesize the final answer now. \n {format_instruction}          
+""",
+    input_variables=["query","verified_facts_summary","contradiction_report","raw_data_summary"],
+    partial_variables={'format_instruction':self.parser.get_format_instructions()}
+)
 
-
-            ("human", "Synthesize the final answer now.")
-        ])
-
-    
+# ### REQUIREMENTS:
+# 1. **Detail**: Provide a detailed, multi-paragraph analysis.
+# 2. **Data**: Include specific numbers/metrics from the Verified Facts.
+# 3. **Accuracy**: If facts conflict, acknowledge the discrepancy.
     async def execute(self, state: AgentState) -> AgentState:
         """
         Diagnostic override to catch errors that BaseAgent might swallow.
@@ -128,13 +122,11 @@ Follow this exact structure:
             self.parser = PydanticOutputParser(pydantic_object=SynthesisResult)
             
             chain = (
-                self.synthesis_prompt | self.llm.with_structured_output(SynthesisResult)
+                self.synthesis_prompt | self.llm | self.parser 
             )
             print("Chaining done")
             synthesis_result = await chain.ainvoke(inputs)
             print("got results")
-            
-            
             # Confidence Calculation
             up_conf = state.get("verification_confidence") or 0.5
             final_conf = (up_conf * 0.4) + (synthesis_result.confidence * 0.6)
@@ -143,20 +135,18 @@ Follow this exact structure:
             state["final_answer"] = synthesis_result.answer
             state["confidence_score"] = float(f"{final_conf:.2f}")
             state["citations"] = synthesis_result.citations
-            
             if state.get("intermediate_answers") is None:
                 state["intermediate_answers"] = {}
             state["intermediate_answers"]["synthesis"] = synthesis_result.model_dump()
             
             print(f"✅ Synthesis complete. Confidence: {state['confidence_score']}")
             return state
-            
+ 
         except Exception as e:
             print(f"❌ Logic Error in _execute_impl: {e}")
             traceback.print_exc()
             return await self._provide_fallback_answer(state)
-    
-
+        
     def _prepare_synthesis_inputs(self, state: AgentState) -> Dict[str, Any]:
         query = state.get("query", "")
         
